@@ -4,7 +4,9 @@ import multer from "multer";
 import { Queue } from "bullmq";
 import dotenv from "dotenv";
 import { QdrantVectorStore } from "@langchain/qdrant";
-import { GoogleGenAI } from "@google/genai";
+import { createUserContent, GoogleGenAI } from "@google/genai";
+// import { ChatGoogle } from "@langchain/google-gauth";
+
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 
 dotenv.config();
@@ -81,14 +83,28 @@ app.get("/chat", async (req, res) => {
   const SYSTEM_PROMPT = `You are a helpful assistant who answers based on the retrieved PDF context: 
   ${JSON.stringify(results, null, 2)}`;
 
+//   const model = new ChatGoogle({
+//     apiKey: GEMINI_API_KEY,
+//   model: "gemma-3-27b-it",
+// }); 
+
+// const res = await model.invoke([
+//   {
+//     role: "user",
+//     content:
+//       "What would be a good company name for a company that makes colorful socks?",
+//   },
+// ]);
+
   // 🔹 Call Gemini with new SDK
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash", // fast model
-    contents: [
-      { role: "system", text: SYSTEM_PROMPT },
-      { role: "user", text: userQuery },
-    ],
+    contents:[
+      createUserContent(userQuery),
+      // createSystemContent(SYSTEM_PROMPT)
+    ]
   });
+ 
 
   return res.json({
     message: response.text,

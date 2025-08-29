@@ -47,6 +47,10 @@ const Chat: React.FC = () => {
           <pre key={index}>{JSON.stringify(message, null, 2)}</pre>
         ))}
       </div>
+      <div>
+        {message}
+      </div>
+      
       <div className="fixed bottom-4 w-100 flex gap-3">
         <Input
           value={message}

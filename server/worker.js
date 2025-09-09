@@ -7,21 +7,27 @@ import fetch from "node-fetch"; // needed to check Qdrant collections
 import "dotenv/config"; // load .env file
 
 const QUEUE_NAME = "pdf-upload-queue";
-const COLLECTION_NAME = "testing";
+const COLLECTION_NAME = "testing2";
 const QDRANT_URL = "http://localhost:6333";
 
-// ---------- Worker ----------
 const worker = new Worker(
   QUEUE_NAME,
   async (job) => {
-    console.log(`📄 Processing job:`, job.data);
+    try {
+      console.log(`📄 Processing job:`, job.data);
 
-    const data = typeof job.data === "string" ? JSON.parse(job.data) : job.data;
+      const data = typeof job.data === "string" ? JSON.parse(job.data) : job.data;
+      
+      if (!data.path || typeof data.path !== 'string') {
+        throw new Error('Invalid job data: path is required');
+      }
 
-    // 1. Load the PDF
-    const loader = new PDFLoader(data.path);
+      // 1. Load the PDF
+      const loader = new PDFLoader(data.path, {
+        splitPages: true
+      });
     const docs = await loader.load();
-    console.log(`✅ Loaded ${docs.length} docs from PDF`);
+    console.log(`Loaded ${docs.length} docs from PDF`);
 
     // 2. Split into smaller chunks
     const textSplitter = new CharacterTextSplitter({
@@ -29,17 +35,17 @@ const worker = new Worker(
       chunkOverlap: 50,
     });
     const splitDocs = await textSplitter.splitDocuments(docs);
-    console.log(`✅ Split into ${splitDocs.length} chunks`);
+    console.log(`Split into ${splitDocs.length} chunks`);
 
     if (splitDocs.length === 0) {
-      console.error("❌ No chunks created. Check PDF path or content.");
+      console.error("No chunks created. Check PDF path or content.");
       return;
     }
 
     // 3. Initialize embeddings
     const embeddings = new GoogleGenerativeAIEmbeddings({
-      model: "gemini-embedding-001",
-      apiKey: process.env.GOOGLE_API_KEY, // from .env
+      model: "text-embedding-004", // latest embedding model
+      apiKey: process.env.GEMINI_API_KEY, // from .env
     });
 
     // 4. Check if Qdrant collection exists
@@ -56,9 +62,9 @@ const worker = new Worker(
         }
       );
       await vectorStore.addDocuments(splitDocs);
-      console.log("✅ Docs added to existing collection in Qdrant");
+      console.log("Docs added to existing collection in Qdrant");
     } else {
-      // ❌ Collection missing → create new one
+      //  Collection missing → create new one
       vectorStore = await QdrantVectorStore.fromDocuments(
         splitDocs,
         embeddings,
@@ -69,12 +75,23 @@ const worker = new Worker(
       );
       console.log("✅ New collection created and docs added to Qdrant");
     }
+
+    // Cleanup the uploaded file
+    // const fs = require('fs').promises;
+    const fs = await import('fs/promises');
+    await fs.unlink(data.path);
+    console.log(`✅ Cleaned up file: ${data.path}`);
+
+    } catch (error) {
+      console.error('Worker error:', error);
+      throw error; // Rethrow to trigger the failed event
+    }
   },
   {
-    concurrency: 5, 
+    concurrency: 5,
     connection: {
       host: "localhost",
-      port: 6379, 
+      port: 6379,
     },
   }
 );

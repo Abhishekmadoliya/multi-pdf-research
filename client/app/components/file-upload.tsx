@@ -2,8 +2,12 @@
 
 import * as React from "react";
 import { Upload } from "lucide-react";
+import { useState } from "react";
 
 const FileUploadComponent:React.FC = () => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const handlefileuploadclick = () => {
     const element = document.createElement("input");
     element.setAttribute("type", "file");
@@ -15,12 +19,26 @@ const FileUploadComponent:React.FC = () => {
             if(file) {
               const formData = new FormData();
               formData.append("pdf", file );
-              fetch("http://localhost:8000/upload/pdf", {
-                method: "POST",
-                body: formData
+              setIsUploading(true);
+              setError(null);
+              setSuccess(null);
+              try {
+                const response = await fetch("http://localhost:8000/upload/pdf", {
+                  method: "POST",
+                  body: formData
+                });
+                const data = await response.json();
+                
+                if (!response.ok) {
+                  throw new Error(data.error || 'Upload failed');
+                }
+                
+                setSuccess(data.message);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Upload failed');
+              } finally {
+                setIsUploading(false);
               }
-            )
-            console.log("file uploaded successfully!");
 
             }
           }

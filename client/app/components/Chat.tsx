@@ -26,8 +26,9 @@ const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [expectedAnswer, setExpectedAnswer] = React.useState<string>('');
+  const [data, setData] = React.useState<any>(null);
 
-  console.log({ messages });
+  // console.log({ messages });
 
   const handleSendChatMessage = async () => {
     try {
@@ -51,6 +52,12 @@ const Chat: React.FC = () => {
       }
 
       const data = await res.json();
+      const responseText = data?.result || '';
+      console.log("Response Text:", responseText);
+      setData(responseText);
+      // setData(data);
+      console.log("Client received data:", data);
+    
       
       setMessages((prev) => [
         ...prev,
@@ -76,7 +83,17 @@ const Chat: React.FC = () => {
         ))}
       </div>
       <div>
-        {message}
+        {data && (
+          <div className="mt-4 p-4 border rounded bg-gray-50 width-full">
+            <h2 className="text-lg font-semibold mb-2">Response Data:</h2>
+            <pre>{JSON.stringify(data, null, 2)}</pre>
+          </div>
+        )}
+      </div>
+      
+
+      <div>
+
       </div>
       
       <div className="fixed bottom-4 w-100 flex flex-col gap-3">

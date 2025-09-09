@@ -77,7 +77,7 @@ app.post("/upload/pdf", upload.single("pdf"), async (req, res) => {
 // Chat route with retriever
 app.post("/chat", async (req, res) => {
   try {
-    const { query, expectedAnswer } = req.body;
+    const { query } = req.body;
     
     if (!query) {
       return res.status(400).json({ error: "Query is required" });
@@ -100,29 +100,29 @@ app.post("/chat", async (req, res) => {
     
     Context: ${results.map(doc => doc.pageContent).join('\n')}`;
 
-    if (expectedAnswer) {
-      prompt += `\n\nPlease ensure your answer matches this expected response: ${expectedAnswer}`;
-    }
+    
 
     // const response = await ai.generateContent(prompt);
-
+    // console.log("prompt",prompt);
+    
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }]
     });
-    log("Gemini res",response);
+    console.log("Gemini res",response.text);
 
-    if (!response || !response.response) {
-      throw new Error('Invalid response from Gemini');
-    }
+    // if (!res || !res.contents || res.contents.length === 0) {
+    //   throw new Error('Invalid response from Gemini');
+    // }
 
-    const text = response.text;
+    // const text = response.contents[0].text;
+    const result =  response.text;
 
     return res.json({
-      message: text,
-      context: results,
-      expectedAnswer: expectedAnswer || null,
-      query
+      // message: text,
+      result: result,
+      query,
+
     });
   } catch (error) {
     console.error('Chat error:', error);

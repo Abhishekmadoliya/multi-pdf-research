@@ -53,7 +53,7 @@ app.post("/upload/pdf", upload.single("pdf"), async (req, res) => {
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    if (!req.file.mimetype || !req.file.mimetype.includes('pdf')) {
+    if (!req.file.mimetype || !req.file.mimetype.includes("pdf")) {
       return res.status(400).json({ error: "Uploaded file must be a PDF" });
     }
 
@@ -64,13 +64,13 @@ app.post("/upload/pdf", upload.single("pdf"), async (req, res) => {
       path: req.file.path,
     });
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: "File uploaded successfully",
-      filename: req.file.originalname
+      filename: req.file.originalname,
     });
   } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: 'Failed to process file upload' });
+    console.error("Upload error:", error);
+    res.status(500).json({ error: "Failed to process file upload" });
   }
 });
 
@@ -78,7 +78,7 @@ app.post("/upload/pdf", upload.single("pdf"), async (req, res) => {
 app.post("/chat", async (req, res) => {
   try {
     const { query } = req.body;
-    
+
     if (!query) {
       return res.status(400).json({ error: "Query is required" });
     }
@@ -88,45 +88,63 @@ app.post("/chat", async (req, res) => {
       apiKey: GEMINI_API_KEY,
     });
 
-    const vectorStore = await QdrantVectorStore.fromExistingCollection(embeddings, {
-      url: "http://localhost:6333",
-      collectionName: "testing2",
-    });
+    const vectorStore = await QdrantVectorStore.fromExistingCollection(
+      embeddings,
+      {
+        url: "http://localhost:6333",
+        collectionName: "testing2",
+      }
+    );
 
     const retriever = vectorStore.asRetriever({ k: 2 });
     const results = await retriever.invoke(query);
 
-    let prompt = `Based on the following context, please answer this question: "${query}"
-    
-    Context: ${results.map(doc => doc.pageContent).join('\n')}`;
+    let prompt = ` You are an AI research assistant. Your task is to analyze information from multiple PDFs and web sources. 
+      Use the provided context carefully to generate a clear, accurate, and insightful answer to the user’s query. 
+      If the information is incomplete or missing, state this honestly and suggest what additional data might help.
 
-    
+      Context:
+      ${results.map((doc) => doc.pageContent).join("\n")}
+
+      Question: "${query}"
+
+      Instructions:
+      - Focus only on information relevant to the question.
+      - Extract key insights, facts, and reasoning rather than just copying text.
+      - Summarize findings concisely but with enough depth to be useful.
+      - If multiple documents disagree, highlight the differences.
+      - Provide valuable insights and actionable conclusions whenever possible.
+      - Maintain a professional and neutral tone.
+      - avoid symbols like * and - in your response.
+      - If you don't know the answer, just say you don't know. or dont have context about this . Don't try to make up an answer.
+      - avoid using " Based on the provided context" every time in your response.
+      - use clear and concise language to convey your message.
+      - Ensure the final answer is well-structured and easy to understand. `;
 
     // const response = await ai.generateContent(prompt);
     // console.log("prompt",prompt);
-    
+
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }] }]
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
-    console.log("Gemini res",response.text);
+    console.log("Gemini res", response.text);
 
     // if (!res || !res.contents || res.contents.length === 0) {
     //   throw new Error('Invalid response from Gemini');
     // }
 
     // const text = response.contents[0].text;
-    const result =  response.text;
+    const result = response.text;
 
     return res.json({
       // message: text,
       result: result,
       query,
-
     });
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ error: 'Failed to process chat request' });
+    console.error("Chat error:", error);
+    res.status(500).json({ error: "Failed to process chat request" });
   }
 });
 
